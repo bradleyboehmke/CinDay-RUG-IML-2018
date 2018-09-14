@@ -1,0 +1,1623 @@
+---
+title: "Interpretable Machine Learning"
+subtitle: "with R"
+author: "Brad Boehmke"
+date: "`r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: ["scrollable.css", "mtheme_max.css", "fonts_mtheme_max.css"]
+    self_contained: false
+    lib_dir: libs
+    chakra: libs/remark-latest.min.js
+    nature:
+      ratio: '16:9'
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+
+```{r setup, include=FALSE, cache=FALSE}
+# Set global R options
+options(htmltools.dir.version = FALSE, servr.daemon = TRUE)
+
+# Set global knitr chunk options
+knitr::opts_chunk$set(
+  fig.align = "center", 
+  cache = TRUE,
+  error = FALSE,
+  message = FALSE, 
+  warning = FALSE, 
+  collapse = TRUE 
+)
+
+# This is good for getting the ggplot background consistent with
+# the html background color
+library(ggplot2)
+thm <- theme_bw() + 
+  theme(
+    panel.background = element_rect(fill = "transparent", colour = NA), 
+    plot.background = element_rect(fill = "transparent", colour = NA),
+    legend.position = "top",
+    legend.background = element_rect(fill = "transparent", colour = NA),
+    legend.key = element_rect(fill = "transparent", colour = NA)
+  )
+theme_set(thm)
+
+library(RefManageR)
+BibOptions(check.entries = FALSE, 
+           bib.style = "authoryear", 
+           cite.style = 'numeric', 
+           style = "markdown",
+           hyperlink = FALSE, 
+           dashed = TRUE)
+bib <- ReadBib("bib.bib", check = FALSE)
+```
+
+
+
+class: center, middle, inverse
+
+# Introduction
+
+---
+
+# About me
+
+.pull-left[
+
+```{r name-tag, echo=FALSE}
+knitr::include_graphics("images/name-tag.png")
+```
+
+* `r fontawesome::fa("globe", fill = "steelblue")` bradleyboehmke.github.io
+* `r fontawesome::fa("github", fill = "steelblue")` @bradleyboehmke
+* `r fontawesome::fa("twitter", fill = "steelblue")` @bradleyboehmke
+* `r fontawesome::fa("linkedin", fill = "steelblue")` @bradleyboehmke
+* `r fontawesome::fa("envelope", fill = "steelblue")` bradleyboehmke@gmail.com
+
+]
+
+
+.pull-right[
+
+#### Family <img src="images/family.png" align="right" alt="family" width="130" />
+
+* Dayton, OH
+* Kate, Alivia (9), Jules (6)
+
+
+#### Professional 
+
+* 84.51° <img src="images/logo8451.jpg" align="right" alt="family" width="150" />
+
+#### Academic
+
+* University of Cincinnati <img src="images/uc.png" align="right" alt="family" width="100" />
+* Air Force Institute of Technology
+
+#### R Community
+
+<img src="images/r-contributions.png" alt="family" width="400" />
+
+]
+
+
+---
+
+# Your turn!
+
+<br><br><br><br><br><br>
+.center[.font150[What does machine learning interpretability mean to you?]]
+
+---
+
+# A mental model
+
+
+.pull-left[
+
+.bolder[.font120[Philosophical: Political & Social]]
+
+* Data ethics
+* Fairness, Accountability, Transparency (FAT)
+* Regulatory examples:
+   - Civil Rights Acts
+   - Americans with Disabilities Act
+   - Genetic Information Nondiscrimination Act
+   - Health Insurance Portability and Accountability Act
+   - Equal Credit Opportunity Act
+   - Fair Credit Reporting Act
+   - Fair Housing Act
+   - European Union Greater Data Privacy Regulation
+* https://www.fatml.org/resources/relevant-scholarship
+
+.center[.font120[.blue[___Right to explanation___]]]
+]
+
+
+.pull-right[
+
+```{r santa, echo=FALSE}
+knitr::include_graphics("images/santa.jpg")
+```
+
+]
+
+]
+
+
+---
+
+# A mental model
+
+
+.pull-left[
+
+```{r blackbox, echo=FALSE}
+knitr::include_graphics("images/black-box.gif")
+```
+
+]
+
+
+.pull-right[
+
+.bolder[.font120[Pragmatic: Model Logic]]
+
+* Performance analysis
+  - Residual plots
+  - Lift charts
+  - ROC curves
+* Sensitivity analysis
+  - Simulated data
+  - Perturbation
+  - Accuracy vs explanation
+* Feature analysis
+  - Feature importance
+  - Feature effects
+
+<hr style="height:40px; visibility:hidden;" /></hr>
+
+.center[.font120[.blue[___Ability to explain___]]]
+]
+
+]
+
+---
+
+# Today's focus
+
+
+.pull-left[
+
+.opacity10[
+.bolder[.font120[Philosophical: Political & Social]]
+
+* Data ethics
+* Fairness, Accountability, Transparency (FAT)
+* Regulatory examples:
+   - Civil Rights Acts
+   - Americans with Disabilities Act
+   - Genetic Information Nondiscrimination Act
+   - Health Insurance Portability and Accountability Act
+   - Equal Credit Opportunity Act
+   - Fair Credit Reporting Act
+   - Fair Housing Act
+   - European Union Greater Data Privacy Regulation
+* https://www.fatml.org/resources/relevant-scholarship
+
+.center[.font120[___Right to explanation___]]
+]
+]
+
+.pull-right[
+
+.bolder[.font120[Pragmatic: Model Logic]]
+
+.opacity10[
+* Performance analysis
+  - Residual plots
+  - Lift charts
+  - ROC curves
+* Sensitivity analysis
+  - Simulated data
+  - Perturbation
+  - Accuracy vs explanation ]
+* Feature analysis
+  - Feature importance
+  - Feature effects
+
+<hr style="height:20px; visibility:hidden;" /></hr>
+
+.center[.font120[.blue[___Ability to explain___]]]
+]
+
+]
+
+---
+
+class: center, middle, inverse
+
+# Terminology to consider
+
+---
+
+# Interpretable models vs model interpretation
+
+- The complexity of a machine learning model is directly related to its interpretability. 
+- Generally, the more complex the model, the more difficult it is to interpret and explain.
+
+```{r interpretable-models, echo=FALSE, out.height="80%", out.width="80%"}
+knitr::include_graphics("images/interpretable-models.png")
+```
+
+---
+
+# Model complexity
+
+Even naturally interpretable models (i.e. GLMs) can become quite complex. Consider the following from `r Citet(bib, "harrison1978hedonic")`:
+
+<br>
+
+$$
+\widehat{\text{log}(y)} = 9.76 + 0.0063RM^2 + 8.98 \times 10^{-5}AGE - 0.19\text{log}(DIS) + 0.096\text{log}(RAD) - \dots 
+$$
+$$
+4.20 \times 10^{-4}TAX - 0.031PTRATIO + 0.36(B - 0.63)^2 - 0.37\text{log}(LSTAT) - \dots
+$$
+
+$$
+0.012CRIM + 8.03 \times 10^{-5}ZN + 2.41 \times 10^{-4}INDUS + 0.088CHAS - 0.0064NOX^2
+$$
+<br><br><br><br>
+.center[.content-box-gray[.font110[Is this really any more interpretable than a random forest model?]]]
+
+---
+
+# Model complexity
+
+.opacity10[
+
+Even naturally interpretable models (i.e. GLMs) can become quite complex. Consider the following from `r Citet(bib, "harrison1978hedonic")`:
+
+<br>
+
+$$
+\widehat{\text{log}(y)} = 9.76 + 0.0063RM^2 + 8.98 \times 10^{-5}AGE - 0.19\text{log}(DIS) + 0.096\text{log}(RAD) - \dots 
+$$
+$$
+4.20 \times 10^{-4}TAX - 0.031PTRATIO + 0.36(B - 0.63)^2 - 0.37\text{log}(LSTAT) - \dots
+$$
+
+$$
+0.012CRIM + 8.03 \times 10^{-5}ZN + 2.41 \times 10^{-4}INDUS + 0.088CHAS - 0.0064NOX^2
+$$
+<br><br><br>
+]
+.center[.content-box-gray[.font130[.blue[We need additional approaches for robust model interpretability.]]]]
+
+---
+
+# Model specific vs Model agnostic
+
+.pull-left[
+
+.bolder[.font120[Model specific]]
+
+- Limited to specific ML classes
+- Incorporates model-specific logic
+- Examples:
+   - coefficients in linear models
+   - impurity in tree-based models
+- ___.red[limited application]___
+
+]
+
+.pull-right[
+
+.bolder[.font120[Model agnostic]]
+
+- Can be applied to any type of ML algorithm
+- Assesses inputs and outputs
+- Examples:
+   - Permutation-based variable importance
+   - PDPs, ICE curves
+   - LIME, Shapley, Breakdown
+- .blue[___most of what you'll see today are model agnostic approaches___]
+
+]
+
+<br><br><br>
+
+.center[.content-box-gray[.font110[When possible its good practice to compare model specific vs model agnostic approaches.]]]
+
+
+---
+
+# Scope of interpretability
+
+.pull-left[
+
+.bolder[Global interpretability]
+
+- How do features influence overall model performance?
+- What is the overall relationship between features and the target?
+
+<hr style="height:1px; visibility:hidden;" /></hr>
+
+```{r global, echo=FALSE, out.height="80%", out.width="80%"}
+knitr::include_graphics("images/global.png")
+```
+
+.center[.content-box-gray[.bolder[Averages effects over data dimensions]]]
+
+]
+
+
+.pull-right[
+
+.bolder[Local interpretability]
+
+- How do our features influence individual predictions?
+- What are the observation level relationships between features and the target?
+
+
+```{r local, echo=FALSE, out.height="80%", out.width="80%"}
+knitr::include_graphics("images/local.png")
+```
+
+.center[.content-box-gray[.bolder[Assesses individual effects]]]
+
+]
+
+
+---
+
+
+class: center, middle, inverse
+
+# Prerequisites
+
+---
+
+# Packages & Data
+
+.pull-left[
+
+.bolder[Packages]
+
+```{r pkg-prereq}
+# helper packages
+library(ggplot2)
+library(dplyr)
+
+# setting up machine learning models
+library(rsample)
+library(h2o)
+
+# packages for explaining our ML models
+library(pdp) #<<
+library(vip) #<<
+library(iml) #<<
+library(DALEX) #<<
+library(lime) #<<
+
+# initialize h2o session
+h2o.no_progress()
+h2o.init()
+```
+
+
+]
+
+.pull-right[
+
+.bolder[Data]
+
+```{r data-prereq}
+# classification data
+df <- rsample::attrition %>% 
+  mutate_if(is.ordered, factor, ordered = FALSE) %>%
+  mutate(Attrition = ifelse(Attrition == "Yes", 1, 0) %>% as.factor())
+
+# convert to h2o object
+df.h2o <- as.h2o(df)
+
+# variable names for resonse & features
+y <- "Attrition"
+x <- setdiff(names(df), y) 
+```
+
+
+]
+
+---
+
+# Models
+
+.scrollable90[
+.pull-left[
+
+.bolder[4 machine learning models]
+
+* Elastic net (AUC = 0.836)
+* Random forest (AUC = 0.788)
+* Gradient boosting machine (AUC = 0.8105)
+* Ensemble(AUC = 0.835)
+
+]
+
+.pull-right[
+
+
+.bolder[Models]
+
+```{r pkg-models}
+# elastic net model 
+glm <- h2o.glm(
+  x = x, 
+  y = y, 
+  training_frame = df.h2o,
+  nfolds = 5,
+  fold_assignment = "Modulo",
+  keep_cross_validation_predictions = TRUE,
+  family = "binomial",
+  seed = 123
+  )
+
+# random forest model
+rf <- h2o.randomForest(
+  x = x, 
+  y = y,
+  training_frame = df.h2o,
+  nfolds = 5,
+  fold_assignment = "Modulo",
+  keep_cross_validation_predictions = TRUE,
+  ntrees = 1000,
+  stopping_metric = "AUC",    
+  stopping_rounds = 10,         
+  stopping_tolerance = 0.005,
+  seed = 123
+  )
+
+# gradient boosting machine model
+gbm <-  h2o.gbm(
+  x = x, 
+  y = y,
+  training_frame = df.h2o,
+  nfolds = 5,
+  fold_assignment = "Modulo",
+  keep_cross_validation_predictions = TRUE,
+  ntrees = 1000,
+  stopping_metric = "AUC",    
+  stopping_rounds = 10,         
+  stopping_tolerance = 0.005,
+  seed = 123
+  )
+
+# ensemble
+ensemble <- h2o.stackedEnsemble(
+  x = x,
+  y = y,
+  training_frame = df.h2o,
+  metalearner_nfolds = 5,
+  model_id = "ensemble",
+  base_models = list(glm, rf, gbm),
+  metalearner_algorithm = "glm"
+  )
+
+# model performance
+h2o.auc(glm, xval = TRUE)
+h2o.auc(rf, xval = TRUE)
+h2o.auc(gbm, xval = TRUE)
+h2o.auc(ensemble, xval = TRUE)
+```
+
+]
+]
+
+
+---
+
+# Model agnostic procedures
+
+
+.pull-left[
+
+In order to work with the __DALEX__ and __iml__ packages, we need to:
+
+1. Get 3 key ingredients
+   - data frame of just features
+   - numeric vector of response
+   - custom prediction function
+
+]
+
+.pull-right[
+
+```{r custom-pred}
+# 1. create a data frame with just the features
+features <- as.data.frame(df) %>% select(-Attrition)
+
+# 2. Create a numeric vector with the actual responses
+response <- as.numeric(as.character(df$Attrition))
+
+# 3. Create custom predict function that returns the predicted values as a
+#    vector (probability of purchasing in our example)
+pred <- function(model, newdata)  {
+  results <- as.data.frame(h2o.predict(model, as.h2o(newdata)))
+  return(results[[3L]])
+}
+
+# example of prediction output
+pred(gbm, features) %>% head() #<<
+```
+
+]
+
+---
+
+# Model agnostic procedures
+
+
+.pull-left[
+
+In order to work with the __DALEX__ and __iml__ packages, we need to:
+
+1. Get 3 key ingredients
+   - data frame of just features
+   - numeric vector of response
+   - custom prediction function
+2. Create a model agnostic object
+   - __iml__: Class `Predictor`
+   - __DALEX__: Class `Explainer`
+
+]
+
+.pull-right[
+
+```{r model-agnostic-objects}
+# GBM predictor object
+iml_predictor_gbm <- Predictor$new(
+  model = gbm, 
+  data = features, #<<
+  y = response, #<< 
+  predict.fun = pred, #<<
+  class = "classification"
+  )
+
+# GBM explainer
+dalex_explainer_gbm <- DALEX::explain(
+  model = gbm,
+  data = features, #<<
+  y = response, #<<
+  predict_function = pred, #<<
+  label = "gbm"
+  )
+```
+
+]
+
+
+```{r model-agnostic-objects-all, echo=FALSE}
+iml_predictor_glm <- Predictor$new(
+  model = glm, 
+  data = features, 
+  y = response, 
+  predict.fun = pred,
+  class = "classification"
+  )
+
+iml_predictor_rf <- Predictor$new(
+  model = rf, 
+  data = features, 
+  y = response, 
+  predict.fun = pred,
+  class = "classification"
+  )
+
+iml_predictor_ensemble <- Predictor$new(
+  model = ensemble, 
+  data = features, 
+  y = response, 
+  predict.fun = pred,
+  class = "classification"
+  )
+
+dalex_explainer_glm <- DALEX::explain(
+  model = glm,
+  data = features,
+  y = response,
+  predict_function = pred,
+  label = "glm"
+  )
+
+dalex_explainer_rf <- DALEX::explain(
+  model = rf,
+  data = features,
+  y = response,
+  predict_function = pred,
+  label = "rf"
+  )
+
+dalex_explainer_ensemble <- DALEX::explain(
+  model = ensemble,
+  data = features,
+  y = response,
+  predict_function = pred,
+  label = "ensemble"
+  )
+```
+
+
+<hr style="height:2px; visibility:hidden;" /></hr>
+
+.center[.content-box-gray[These objects simply pass key information from the ML model to downstream functions.]]
+
+---
+
+class: center, middle, inverse
+
+# Global Interpretation
+
+---
+
+# Global Interpretation
+
+.pull-left[
+
+How do features influence overall model performance?
+
+* Feature importance
+   - model specific
+   - model agnostic
+
+]
+
+.pull-right[
+
+What is the overall relationship between features and the target?
+
+* Feature effects
+   - Partial dependence
+   - Interactions
+
+]
+
+---
+
+# Global feature importance
+
+.scrollable[
+
+.pull-left[
+
+How do features influence overall model performance?
+
+* Feature importance
+   - model specific
+      - GLM: absolute standardized coefficients or t-statistic
+      - RF & GBM: improvement in gini
+      - ensemble: NA
+
+]
+
+
+.pull-right[
+
+```{r vip-model-specific, error=TRUE}
+vip::vip(glm)
+vip::vip(rf)
+vip::vip(ensemble)
+```
+
+]
+
+]
+
+<br>
+
+.center[.content-box-gray[[__vip__](https://github.com/koalaverse/vip) provides consistant vip plotting regardless of ML model.]]
+
+---
+
+# Global feature importance
+
+.pull-left[
+
+How do features influence overall model performance?
+
+* Feature importance
+   - .opacity10[model specific]
+   - model agnostic: .bolder[Permutation-based]
+
+]
+
+.pull-right[
+
+```{r vip-permute, echo=FALSE, out.height="90%", out.width="90%"}
+knitr::include_graphics("images/vip-permute.png")
+```
+
+]
+
+.center[.content-box-gray[.font90[Permutation breaks the relationship between the feature and response by randomizing the feature values.]]]
+
+
+---
+
+# Global feature importance
+
+.scrollable90[
+
+.pull-left[
+
+.bolder[iml]
+
+```{r vip-iml}
+# compute feature importance with specified loss metric
+iml_vip <- FeatureImp$new(iml_predictor_ensemble, loss = "logLoss")
+
+# output as a data frame
+head(iml_vip$results)
+
+# plot output
+plot(iml_vip) + ggtitle("Ensemble variable importance")
+```
+
+]
+
+.pull-right[
+
+.bolder[DALEX]
+
+```{r vip-dalex, fig.height=10}
+dalex_vip_glm <- variable_importance(dalex_explainer_glm, n_sample = -1) 
+dalex_vip_rf  <- variable_importance(dalex_explainer_rf, n_sample = -1)
+dalex_vip_gbm <- variable_importance(dalex_explainer_gbm, n_sample = -1)
+dalex_vip_ensemble <- variable_importance(dalex_explainer_ensemble, n_sample = -1)
+
+plot(dalex_vip_glm, dalex_vip_rf, dalex_vip_gbm, dalex_vip_ensemble, max_vars = 10)
+```
+
+]
+]
+
+
+---
+
+# Global feature effects
+
+What is the overall relationship between features and the target?
+
+.pull-left-narrow[
+
+* Feature effects
+   - Partial dependence
+   - .opacity10[Interactions]
+
+]
+
+.pull-right-wide[
+
+```{r pdp-idea, echo=FALSE, out.height="90%", out.width="90%"}
+knitr::include_graphics("images/pdp.png")
+```
+
+]
+
+---
+
+# Partial dependence
+
+.scrollable90[
+
+.pull-left[
+
+.bolder[pdp]
+
+```{r pdp-pdp1}
+pdp_fun <- function(object, newdata) {
+  # compute partial dependence 
+  pd <- mean(predict(object, as.h2o(newdata))[[3L]])
+  
+  # return data frame with average predicted value
+  return(as.data.frame(pd))
+}
+
+# partial dependence values
+pd_df <- partial(
+  ensemble, 
+  pred.var = "OverTime", 
+  train = features,
+  pred.fun = pdp_fun
+)
+```
+
+]
+
+.pull-right[
+
+<br>
+
+```{r pdp-pdp1-plot, fig.height=2.8}
+# partial dependence
+pd_df
+
+# partial dependence plot
+autoplot(pd_df)
+```
+
+
+]
+
+]
+
+---
+
+# Partial dependence
+
+.scrollable90[
+.pull-left[
+
+.bolder[pdp]
+
+```{r pdp-pdp2, eval=FALSE}
+# partial dependence values
+partial(
+  ensemble, 
+  pred.var = "Age", 
+  train = features,
+  pred.fun = pdp_fun,
+  grid.resolution = 20
+) %>% 
+  autoplot(rug = TRUE, train = features) + 
+  ggtitle("Age")
+```
+
+<br>
+
+.bolder[iml]
+
+```{r pdp-iml, eval=FALSE}
+Partial$new(iml_predictor_ensemble, "Age", ice = FALSE, grid.size = 20) %>% 
+  plot() + 
+  ggtitle("Age")
+```
+
+<br>
+
+.bolder[DALEX]
+
+```{r pdp-dalex, eval=FALSE}
+p1 <- variable_response(dalex_explainer_glm, variable =  "Age", type = "pdp", grid.resolution = 20)
+p2 <- variable_response(dalex_explainer_rf, variable =  "Age", type = "pdp", grid.resolution = 20)
+p3 <- variable_response(dalex_explainer_gbm, variable =  "Age", type = "pdp", grid.resolution = 20)
+p4 <- variable_response(dalex_explainer_ensemble, variable =  "Age", type = "pdp", grid.resolution = 20)
+
+plot(p1, p2, p3, p4)
+```
+
+]
+
+.pull-right[
+
+<br>
+
+```{r all-pdp-plots, echo=FALSE, fig.height=12}
+pdp_plot <- partial(
+  ensemble, 
+  pred.var = "Age", 
+  train = features,
+  pred.fun = pdp_fun,
+  grid.resolution = 20
+) %>% 
+  autoplot(rug = TRUE, train = features) + 
+  ggtitle("Age (pdp)")
+
+iml_plot <- Partial$new(iml_predictor_ensemble, "Age", ice = FALSE, grid.size = 20) %>% 
+  plot() + 
+  ggtitle("Age (iml)")
+
+p1 <- variable_response(dalex_explainer_glm, variable =  "Age", type = "pdp", grid.resolution = 20)
+p2 <- variable_response(dalex_explainer_rf, variable =  "Age", type = "pdp", grid.resolution = 20)
+p3 <- variable_response(dalex_explainer_gbm, variable =  "Age", type = "pdp", grid.resolution = 20)
+p4 <- variable_response(dalex_explainer_ensemble, variable =  "Age", type = "pdp", grid.resolution = 20)
+
+dalex_plot <- plot(p1, p2, p3, p4)
+
+grid.arrange(pdp_plot, iml_plot, dalex_plot, ncol = 1)
+```
+
+
+]
+
+]
+
+---
+
+# Global feature effects
+
+What is the overall relationship between features and the target?
+
+.pull-left[
+
+* Feature effects
+   - .opacity10[Partial dependence]
+   - Interactions
+      - one-way interactions
+
+```{r, eval=FALSE}
+1: for variable i in {1,...,p} do
+     | f(x) = estimate predicted values with original model
+     | pd(x) = partial dependence of variable i
+     | pd(!x) = partial dependence of all features excluding i
+     | upper = sum(f(x) - pd(x) - pd(!x)) #<<
+     | lower = variance(f(x))
+     | rho = upper / lower
+   end
+2. Sort variables by descending rho (interaction strength) 
+```
+
+]
+
+.pull-right[
+
+```{r h-statistic-idea, echo=FALSE, out.height="100%", out.width="100%"}
+knitr::include_graphics("images/h-statistic.png")
+```
+
+]
+
+---
+
+# H-statistic: 1-way interaction
+
+.pull-left[
+
+.bolder[iml]
+
+```{r h-statistic, eval=FALSE}
+interact <- Interaction$new(iml_predictor_ensemble)
+plot(interact)
+```
+
+- One of only a few implementations
+- Computationally intense ( $2n^2$ runs)
+   - took 53 minutes for data set with 100 features 
+   - Can parallelize (`vignette(“parallel”, package = “iml”)`) 
+
+]
+
+.pull-right[
+
+```{r h-statistic-plot, echo=FALSE}
+interact <- Interaction$new(iml_predictor_ensemble)
+plot(interact)
+```
+
+]
+
+---
+
+# Global feature effects
+
+What is the overall relationship between features and the target?
+
+.pull-left[
+
+* Feature effects
+   - .opacity10[Partial dependence]
+   - Interactions .opacity10[
+      - one-way interactions]
+      - two-way interactions
+
+```{r, eval=FALSE}
+1: i = a selected variable of interest
+2: for remaining variables j in {1,...,p} do
+     | pd(ij) = interaction partial dependence of variables i and j #<<
+     | pd(i) = partial dependence of variable i
+     | pd(j) = partial dependence of variable j
+     | upper = sum(pd(ij) - pd(i) - pd(j))
+     | lower = variance(pd(ij))
+     | rho = upper / lower
+   end
+3. Sort interaction relationship by descending rho (interaction strength) 
+```
+
+]
+
+.pull-right[
+
+```{r h-statistic-2way-idea, echo=FALSE, out.height="75%", out.width="75%"}
+knitr::include_graphics("images/h-statistic-2way.png")
+```
+
+]
+
+---
+
+# H-statistic: 2-way interaction
+
+.scrollable[
+.pull-left[
+
+```{r h-statistic-2way-plot}
+interact_2way <- Interaction$new(iml_predictor_ensemble, feature = "OverTime")
+plot(interact_2way)
+```
+
+]
+
+.pull-right[
+
+```{r pdp-2way-plot, echo=FALSE}
+# interaction PDP with pdp
+p1 <- partial(
+  ensemble, 
+  pred.var = c("OverTime", "NumCompaniesWorked"), 
+  train = features,
+  pred.fun = pdp_fun,
+  grid.resolution = 20
+) %>% autoplot()
+
+# interaction PDP with iml
+interaction_pdp <- Partial$new(iml_predictor_ensemble, c("OverTime", "NumCompaniesWorked"), ice = FALSE, grid.size = 20)
+p2 <- plot(interaction_pdp)
+
+gridExtra::grid.arrange(p1, p2, ncol = 1)
+```
+
+]
+]
+
+<br>
+
+.center[.content-box-gray[H-statistic can point you to which interaction PDPs to look at.]]
+
+---
+
+class: center, middle, inverse
+
+# Local Interpretation
+
+---
+
+# Local Interpretation
+
+.pull-left[
+
+Are feature effects uniform over all observations?
+
+* Feature effects
+   - Individual conditional expectation curves (ICE)
+   
+]
+
+.pull-right[
+
+How do features influence individual predictions?
+
+* Feature importance
+   - Local individual model-agnostic explanation (LIME)
+   - Shapley Values
+   - Breakdown
+
+]
+
+---
+
+# ICE curves
+
+.pull-left[
+
+Are feature effects uniform over all observations?
+
+* Feature effects
+   - Individual conditional expectation curves (ICE)
+
+<br>
+
+.center[.blue[.font90[Same as PDPs but rather than average the effect across all observations, we keep and plot individual observation predictions]]]
+
+]
+
+.pull-right[
+
+```{r example-ice-curve, echo=FALSE}
+# create custom predict function --> must return a data frame
+ice_fun <- function(object, newdata) {
+  as.data.frame(predict(object, newdata = as.h2o(newdata)))[[3L]]
+}
+
+# individual conditional expectations values
+pd_df <- partial(
+  gbm, 
+  pred.var = "Age", 
+  train = features,
+  pred.fun = ice_fun,
+  grid.resolution = 20
+)
+
+# ICE plots
+p1 <- autoplot(pd_df, alpha = 0.1) + ggtitle("Non-centered")
+p2 <- autoplot(pd_df, alpha = 0.1, center = TRUE) + ggtitle("Centered")
+gridExtra::grid.arrange(p1, p2, ncol = 1)
+```
+
+]
+
+---
+
+# ICE curves
+
+.scrollable90[
+.pull-left[
+
+.bolder[pdp]
+
+```{r example-ice-curve-silent, eval=FALSE}
+# create custom predict function --> must return a data frame
+ice_fun <- function(object, newdata) {
+  as.data.frame(predict(object, newdata = as.h2o(newdata)))[[3L]]
+}
+
+# individual conditional expectations values
+pd_df <- partial(
+  gbm, 
+  pred.var = "Age", 
+  train = features,
+  pred.fun = ice_fun,
+  grid.resolution = 20
+)
+
+# ICE plots
+p1 <- autoplot(pd_df, alpha = 0.1) + ggtitle("Non-centered")
+p2 <- autoplot(pd_df, alpha = 0.1, center = TRUE) + ggtitle("Centered") #<<
+gridExtra::grid.arrange(p1, p2, ncol = 1)
+```
+
+]
+
+.pull-right[
+
+```{r example-ice-curve-hidden, echo=FALSE}
+gridExtra::grid.arrange(p1, p2, ncol = 1)
+```
+
+]
+]
+
+---
+
+# ICE curves
+
+.scrollable90[
+.pull-left[
+
+.bolder[iml]
+
+```{r iml-ice1, eval=FALSE}
+iml_ice <- Partial$new(iml_predictor_gbm, "Age", ice = TRUE, grid.size = 20) 
+iml_ice$center(min(features$Age)) #<<
+plot(iml_ice)
+```
+
+<br><br>
+
+```{r iml-ice2, eval=FALSE}
+iml_ice <- Partial$new(iml_predictor_gbm, "OverTime", ice = TRUE, grid.size = 20) 
+plot(iml_ice)
+```
+
+]
+
+.pull-right[
+
+
+```{r iml-ice-plot-output, echo=FALSE}
+iml_ice <- Partial$new(iml_predictor_gbm, "Age", ice = TRUE, grid.size = 20) 
+iml_ice$center(min(features$Age)) 
+p1 <- plot(iml_ice)
+
+iml_ice <- Partial$new(iml_predictor_gbm, "OverTime", ice = TRUE, grid.size = 20) 
+p2 <- plot(iml_ice)
+
+gridExtra::grid.arrange(p1, p2, ncol = 1)
+```
+
+
+]
+]
+
+---
+
+# Local interpretation
+
+Given the following observations, how do features influence individual predictions?
+
+```{r local-obs}
+# predictions
+predictions <- predict(gbm, df.h2o) %>% .[[3L]] %>% as.vector()
+
+# highest and lowest probabilities
+paste("Observation", which.max(predictions), "has", round(max(predictions), 2), "probability of attrition") 
+paste("Observation", which.min(predictions), "has", round(min(predictions), 2), "probability of attrition")  
+
+# get these observations
+high_prob_ob <- df[which.max(predictions), ]
+low_prob_ob  <- df[which.min(predictions), ]
+```
+
+
+---
+
+# LIME
+
+.pull-left[
+
+How do features influence individual predictions?
+
+* Feature importance
+   - Local individual model-agnostic explanation (LIME)
+   
+LIME algorithm:
+
+.font80[
+1. __Permute__ your training data to create replicated feature data with same distribution.
+2. Compute __similarity distance measure__ between the single observation of interest and the permuted observations.
+3. Apply selected machine learning model to __predict outcomes__ of permuted data.
+4. __Select m number of features__ to best describe predicted outcomes.
+5. __Fit a simple model__ to the permuted data, explaining the complex model outcome with m features from the permuted data weighted by its similarity to the original observation .
+6. Use the resulting __feature weights to explain local behavior__.
+
+]
+]
+
+.pull-right[
+
+```{r lime-idea, echo=FALSE, out.height="100%", out.width="100%"}
+knitr::include_graphics("images/lime-fitting-1.png")
+```
+
+]
+
+---
+
+# LIME
+
+.pull-left[
+
+.bolder[lime]
+
+```{r lime-explainer}
+# create explainer object
+lime_explainer <- lime(
+  x = df[, names(features)],
+  model = ensemble, 
+  n_bins = 5
+  )
+
+# perform lime algorithm
+lime_explanation <- lime::explain(
+  x = high_prob_ob[, names(features)], 
+  explainer = lime_explainer, 
+  n_permutations = 5000,
+  dist_fun = "gower",
+  kernel_width = .75,
+  n_features = 10, 
+  feature_select = "highest_weights",
+  label = "p1"
+  )
+```
+
+]
+
+.pull-right[
+
+<br>
+
+```{r plot-lime-explanation, fig.height=6}
+plot_features(lime_explanation)
+```
+
+
+]
+
+---
+
+# LIME
+
+.pull-left[
+
+.bolder[lime]
+
+```{r lime-explainer2}
+# create explainer object
+lime_explainer <- lime(
+  x = df[, names(features)],
+  model = ensemble, 
+  n_bins = 6 #<<
+  )
+
+# perform lime algorithm
+lime_explanation <- lime::explain(
+  x = high_prob_ob[, names(features)], 
+  explainer = lime_explainer, 
+  n_permutations = 8000, #<<
+  dist_fun = "manhattan", #<<
+  kernel_width = 3, #<<
+  n_features = 10,  #<<
+  feature_select = "lasso_path", #<<
+  label = "p1"
+  )
+```
+
+]
+
+.pull-right[
+
+<br>
+
+```{r plot-lime-explanation2, fig.height=6}
+plot_features(lime_explanation)
+```
+
+
+]
+
+---
+
+# LIME
+
+
+.bolder[iml]
+
+.scrollable[
+.pull-left[
+
+```{r iml-lime-high, eval=FALSE}
+# fit local model to high probability ob
+lime <- LocalModel$new(
+  predictor = iml_predictor_gbm,  
+  x.interest = high_prob_ob[, names(features)],
+  dist.fun = "gower",
+  kernel.width = NULL,
+  k = 10
+  )
+
+plot(lime)
+```
+
+```{r iml-lime-low, eval=FALSE}
+# reapply model to low probability observation
+lime$explain(x.interest = low_prob_ob) #<<
+
+plot(lime)
+```
+
+]
+
+.pull-right[
+
+```{r iml-lime-plots, echo=FALSE, fig.height=6}
+lime <- LocalModel$new(
+  predictor = iml_predictor_gbm,  
+  x.interest = high_prob_ob[, names(features)],
+  dist.fun = "gower",
+  kernel.width = NULL,
+  k = 10
+  )
+p1 <- plot(lime) + ggtitle("High probability employee")
+
+lime$explain(x.interest = low_prob_ob[, names(features)]) 
+p2 <- plot(lime) + ggtitle("Low probability employee")
+
+gridExtra::grid.arrange(p1, p2, ncol = 1)
+```
+
+]
+]
+
+<br>
+.center[.content-box-gray[__iml__'s implementation of LIME is easier to apply but not as robust as __lime__]]
+
+---
+
+# Shapley values
+
+.pull-left[
+
+How do features influence individual predictions?
+
+* Feature importance .opacity10[
+   - Local individual model-agnostic explanation (LIME)]
+   - Shapley values
+      - a method from coalitional game theory
+      - tells us how to fairly distribute the ‘payout’ among contributors
+      - computationally infeasible for any normally-sized data set
+]
+
+.pull-right[
+
+```{r shapley-idea, echo=FALSE, out.width="30%"}
+knitr::include_graphics("images/shapley-idea.png")
+```
+
+]
+
+---
+
+# Shapley values - an approximation
+
+
+
+```{r shapley-idea2, echo=FALSE, out.width="95%"}
+knitr::include_graphics("images/approx-shapley-idea.png")
+```
+
+
+---
+
+# Shapley values - an approximation
+
+.scrollable90[
+.pull-left[
+
+.bolder[iml]
+
+- one of only a few implementations
+- adjust `sample.size` for greater accuracy ( $\uparrow$) or improved computational speed ( $\downarrow$)
+
+```{r iml-shapley}
+# compute shapley values
+shapley <- Shapley$new(
+  iml_predictor_gbm, 
+  x.interest = high_prob_ob[, names(features)],
+  sample.size = 500 #<<
+  )
+
+shapley
+```
+
+]
+
+.pull-right[
+
+```{r iml-shapley-plot}
+# plot
+plot(shapley)
+```
+
+]
+]
+
+---
+
+# Breakdown
+
+.pull-left[
+
+How do features influence individual predictions?
+
+* Feature importance .opacity10[
+   - Local individual model-agnostic explanation (LIME)
+   - Shapley values]
+   - Breakdown
+      - less popular than LIME & Shapley
+      - two approaches: _step up_ & _step down_
+      - computationally expensive
+   
+]   
+
+.pull-right[
+
+<br>
+
+```{r breakdown-idea, echo=FALSE, out.width="110%"}
+knitr::include_graphics("images/breakdown-idea.png")
+```
+
+]
+
+---
+
+# Breakdown
+
+.scrollable90[
+.pull-left[
+
+.bolder[DALEX]
+
+- uses __breakdown__ package to compute
+- only implementation of such algorithm
+- took __13 minutes__ to compute
+
+```{r dalex-breakdown}
+# compute breakdown values values
+high_prob_breakdown <- prediction_breakdown(
+  dalex_explainer_gbm, 
+  observation = high_prob_ob[, names(features)],
+  direction = "up" #<<
+  )
+
+# check out the top 10 influential variables for this observation
+high_prob_breakdown[1:10, c(1, 2, 5)]
+```
+
+]
+
+.pull-right[
+
+```{r dalex-breakdown-plot}
+# plot
+plot(high_prob_breakdown)
+```
+
+]
+]
+
+---
+
+class: center, middle, inverse
+
+# Summary of Solutions
+
+---
+
+# Packages & capabilities
+
+<br>
+<br>
+
+```{r pkg-summary, echo=FALSE, out.width="100%"}
+knitr::include_graphics("images/summary.png")
+```
+
+---
+
+class: center, middle, inverse
+
+# Concluding Remarks
+
+---
+
+# Final thoughts
+
+.pull-left[
+
+<br>
+
+```{r chuck-norris, echo=FALSE}
+roundhouse::kick("When people tell you machine learning is just a black box.",
+                 type = 2, width = 40, size = 25, fps = 5)
+```
+
+]
+
+.pull-right[
+
+.bolder[Learn more]
+
+* Interpretable machine learning: A guide for making black box models explainable [`r fontawesome::fa("link", fill = "steelblue")`](https://christophm.github.io/interpretable-ml-book/)
+* An introduction to machine learning interpretability [`r fontawesome::fa("link", fill = "steelblue")`](https://www.safaribooksonline.com/library/view/an-introduction-to/9781492033158/)
+* H2O's machine learning interpretability resources [`r fontawesome::fa("link", fill = "steelblue")`](https://github.com/h2oai/mli-resources)
+* Patrick Hall's machine learning intrepretability resources [`r fontawesome::fa("link", fill = "steelblue")`](https://github.com/jphall663/awesome-machine-learning-interpretability)
+* UC Business Analytics R Programming Guide [`r fontawesome::fa("link", fill = "steelblue")`](http://uc-r.github.io/)
+
+]
+
+
+---
+
+# References
+
+.scrollable[
+
+```{r references, results='asis', echo=FALSE, cache=FALSE}
+PrintBibliography(bib)
+```
+
+]
+
