@@ -7,7 +7,7 @@ output:
 
 # Interpretable Machine Learning Presentation
 
-Slides, code, and data for "Interpretable Machine Learning" presented September 18, 2018 at the Cincinnati-Dayton UseR meet up.  __Launch slides__ [`r fontawesome::fa("play", fill = "steelblue")`](https://bradleyboehmke.github.io/CinDay-RUG-IML-2018/slides-source.html#1)
+Slides, code, and data for "Interpretable Machine Learning" presented September 18, 2018 at the Cincinnati-Dayton UseR meet up.  [__Launch slides__](https://bradleyboehmke.github.io/CinDay-RUG-IML-2018/slides-source.html#1)
 
 
 ## Overview
